@@ -129,3 +129,15 @@ If you want to wipe everything (including data) and start fresh:
 └── Dockerfile           # Python Environment Definition  
 
 &nbsp;
+
+## 🗺️ Roadmap
+
+This project is actively being developed. Here are the planned features for upcoming releases:
+
+- [x] Core Backend API (FastAPI, SQLModel, PostgreSQL)
+- [x] Advanced Security (JWT, Argon2, Rotation)
+- [x] Docker & Compose Infrastructure
+- [x] CLI Client
+- [ ] **Frontend Web UI** (Planned: Streamlit Dashboard)
+- [ ] Comprehensive Unit Tests (Pytest)
+- [ ] Deployment to Cloud (Render)
