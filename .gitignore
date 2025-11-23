@@ -1,0 +1,11 @@
+.env
+session.json
+postgres_data/
+__pycache__/
+*.pyc
+.venv/
+alembic/versions/__pycache__/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
