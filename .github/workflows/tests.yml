@@ -22,13 +22,13 @@ jobs:
         echo "SECRET_KEY=testing_secret_key_123456789" >> .env
 
     - name: Start containers
-      run: docker-compose up -d --build
+      run: docker compose up -d --build
 
     - name: Wait for DB
       run: sleep 10
 
     - name: Run Migrations
-      run: docker-compose exec -T web alembic upgrade head
+      run: docker compose exec -T web alembic upgrade head
 
     - name: Run Tests
-      run: docker-compose exec -T web pytest
+      run: docker compose exec -T web pytest
