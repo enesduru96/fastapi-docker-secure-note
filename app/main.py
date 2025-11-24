@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 from .routers import auth, notes 
 from . import database
 
+from fastapi.middleware.cors import CORSMiddleware
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
@@ -15,6 +17,15 @@ app = FastAPI(
     description="A secure note-taking API with JWT Auth and Docker.",
     version="1.0.0",
     lifespan=lifespan
+)
+
+
+app.add_middleware( # to be changed in production level
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(auth.router)
