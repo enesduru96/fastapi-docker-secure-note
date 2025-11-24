@@ -31,4 +31,4 @@ jobs:
       run: docker compose exec -T web alembic upgrade head
 
     - name: Run Tests
-      run: docker compose exec -T web pytest
+      run: docker compose exec -T web python -m pytest
