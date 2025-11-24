@@ -1,16 +1,19 @@
 from datetime import datetime, timezone
-from typing import Optional
-from sqlmodel import Session, select
-from .models import User, UserCreate, UserPublic, RefreshToken, Note, NoteCreate, NotePublicWithUsername
-from .auth import get_password_hash
+from typing import Optional, List
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import or_
+from .models import User, UserCreate, UserPublic, RefreshToken, Note, NoteCreate, NotePublicWithUsername
 
-def get_user_by_email(session: Session, email: str) -> Optional[User]:
+async def get_user_by_email(session: AsyncSession, email: str) -> Optional[User]:
     statement = select(User).where(User.email == email)
-    return session.exec(statement).first()
+    result = await session.exec(statement)
+    return result.first()
 
 
-def create_user(session: Session, user_data: UserCreate) -> UserPublic:
+async def create_user(session: AsyncSession, user_data: UserCreate) -> UserPublic:
+    from .auth import get_password_hash
+    
     hashed_password = get_password_hash(user_data.password)
     
     db_user = User(
@@ -22,12 +25,13 @@ def create_user(session: Session, user_data: UserCreate) -> UserPublic:
     )
     
     session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
+    await session.commit()
+    await session.refresh(db_user)
     
     return UserPublic.model_validate(db_user)
 
-def create_db_refresh_token(session: Session, user_id: int, jti: str, expires_at: datetime) -> RefreshToken:
+
+async def create_db_refresh_token(session: AsyncSession, user_id: int, jti: str, expires_at: datetime) -> RefreshToken:
     db_token = RefreshToken(
         user_id=user_id,
         jti=jti,
@@ -36,29 +40,30 @@ def create_db_refresh_token(session: Session, user_id: int, jti: str, expires_at
     )
     
     session.add(db_token)
-    session.commit()
-    session.refresh(db_token)
+    await session.commit()
+    await session.refresh(db_token)
     
     return db_token
 
-
-def get_valid_refresh_token(session: Session, jti: str) -> Optional[RefreshToken]:
+async def get_valid_refresh_token(session: AsyncSession, jti: str) -> Optional[RefreshToken]:
     statement = select(RefreshToken).where(
         RefreshToken.jti == jti,
         RefreshToken.is_used == False,
         RefreshToken.expires_at > datetime.now(timezone.utc)
     )
-    return session.exec(statement).first()
+    result = await session.exec(statement)
+    return result.first()
 
-def mark_refresh_token_as_used(session: Session, token_id: int):
-    token = session.get(RefreshToken, token_id)
+
+async def mark_refresh_token_as_used(session: AsyncSession, token_id: int):
+    token = await session.get(RefreshToken, token_id)
     if token:
         token.is_used = True
         session.add(token)
-        session.commit()
+        await session.commit()
         
 
-def create_note(session: Session, note_in: NoteCreate, owner_id: int) -> Note:
+async def create_note(session: AsyncSession, note_in: NoteCreate, owner_id: int) -> Note:
     db_note = Note(
         title=note_in.title,
         content=note_in.content,
@@ -66,17 +71,25 @@ def create_note(session: Session, note_in: NoteCreate, owner_id: int) -> Note:
         owner_id=owner_id
     )
     session.add(db_note)
-    session.commit()
-    session.refresh(db_note)
+    await session.commit()
+    await session.refresh(db_note)
     return db_note
 
-def get_notes_by_owner(session: Session, owner_id: int) -> list[Note]:
+async def get_notes_by_owner(session: AsyncSession, owner_id: int) -> List[Note]:
     statement = select(Note).where(Note.owner_id == owner_id)
-    return session.exec(statement).all()
+    result = await session.exec(statement)
+    return result.all()
 
-def get_public_notes(session: Session, limit: int = 100) -> list[NotePublicWithUsername]:
-    statement = select(Note, User.username).join(User).where(Note.is_public == True).limit(limit)
-    results = session.exec(statement).all()
+async def get_public_notes(session: AsyncSession, limit: int = 100) -> List[NotePublicWithUsername]:
+    statement = (
+        select(Note, User.username)
+        .join(User)
+        .where(Note.is_public == True)
+        .limit(limit)
+    )
+    
+    result = await session.exec(statement)
+    results = result.all()
     
     output_list = []
     for note, username in results:
@@ -86,7 +99,7 @@ def get_public_notes(session: Session, limit: int = 100) -> list[NotePublicWithU
         
     return output_list
 
-def search_notes(session: Session, query: str, owner_id: int) -> list[NotePublicWithUsername]:
+async def search_notes(session: AsyncSession, query: str, owner_id: int) -> List[NotePublicWithUsername]:
     statement = (
         select(Note, User.username)
         .join(User)
@@ -104,7 +117,8 @@ def search_notes(session: Session, query: str, owner_id: int) -> list[NotePublic
         )
     )
     
-    results = session.exec(statement).all()
+    result = await session.exec(statement)
+    results = result.all()
     
     output_list = []
     for note, username in results:

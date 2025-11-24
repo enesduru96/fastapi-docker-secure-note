@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import JWTError, jwt
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 
@@ -56,8 +56,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 
-def get_current_user(
-    session: Session = Depends(get_session), token: str = Depends(oauth2_scheme)
+async def get_current_user(
+    session: AsyncSession = Depends(get_session), token: str = Depends(oauth2_scheme)
 ) -> models.User:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -76,11 +76,9 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user = crud.get_user_by_email(session, email=email)
+    user = await crud.get_user_by_email(session, email=email)
 
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
-        )
-
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        
     return user

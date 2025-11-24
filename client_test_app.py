@@ -120,7 +120,6 @@ def login():
         if is_valid_email(email):
             break
         print("Invalid email format. Please try again.")
-    # -------------------------------------
 
     password = input("Password: ")
     

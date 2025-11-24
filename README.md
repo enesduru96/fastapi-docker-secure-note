@@ -138,7 +138,7 @@ This project is actively being developed. Here are the planned features for upco
 - [x] Advanced Security (JWT, Argon2, Rotation)
 - [x] Docker & Compose Infrastructure
 - [x] CLI Client
-- [ ] Refactored Async Codebase
+- [x] Refactored Async Codebase
 - [ ] **Frontend Web UI** (Planned: Streamlit Dashboard)
 - [ ] Comprehensive Unit Tests (Pytest)
 - [ ] Deployment to Cloud (Render)

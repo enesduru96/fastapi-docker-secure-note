@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from .database import create_db_and_tables
 
 from .routers import auth, notes 
 

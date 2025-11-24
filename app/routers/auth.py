@@ -1,7 +1,7 @@
 from datetime import timedelta, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 from jose import jwt, JWTError
 
 from ..database import get_session
@@ -14,26 +14,25 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 # 1. REGISTER
 # -----------------
 @router.post("/register", response_model=models.UserPublic, status_code=status.HTTP_201_CREATED)
-def register_user(user_in: models.UserCreate, db: Session = Depends(get_session)):
-
-    user = crud.get_user_by_email(db, email=user_in.email)
+async def register_user(user_in: models.UserCreate, db: AsyncSession = Depends(get_session)):
+    user = await crud.get_user_by_email(db, email=user_in.email)
     if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered.",
         )
     
-    return crud.create_user(db, user_data=user_in)
+    return await crud.create_user(db, user_data=user_in)
 
 
 # -----------------
 # 2. LOGIN
 # -----------------
 @router.post("/token", response_model=models.Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(),
-                           db: Session = Depends(get_session)):
-
-    user = crud.get_user_by_email(db, email=form_data.username)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(),
+                                 db: AsyncSession = Depends(get_session)):
+    user = await crud.get_user_by_email(db, email=form_data.username)
+    
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -47,10 +46,10 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(),
     )
     
     jti = auth.create_refresh_token_jti()
-    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = (datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)).replace(tzinfo=None)
 
 
-    crud.create_db_refresh_token(
+    await crud.create_db_refresh_token(
         session=db,
         user_id=user.id,
         jti=jti,
@@ -70,7 +69,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(),
 # 3. REFRESH ACCESS TOKEN
 # -----------------
 @router.post("/refresh", response_model=models.Token)
-def refresh_access_token(token_data: models.TokenRefreshRequest, db: Session = Depends(get_session)):
+async def refresh_access_token(token_data: models.TokenRefreshRequest, db: AsyncSession = Depends(get_session)):
     try:
         payload = jwt.decode(token_data.refresh_token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
         jti = payload.get("jti")
@@ -85,7 +84,7 @@ def refresh_access_token(token_data: models.TokenRefreshRequest, db: Session = D
             detail="Invalid or expired refresh token.",
         )
 
-    db_token = crud.get_valid_refresh_token(db, jti=jti)
+    db_token = await crud.get_valid_refresh_token(db, jti=jti)
     if not db_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -95,9 +94,9 @@ def refresh_access_token(token_data: models.TokenRefreshRequest, db: Session = D
 
     # --- TOKEN ROTATION LOGIC ---
     
-    crud.mark_refresh_token_as_used(db, token_id=db_token.id)
+    await crud.mark_refresh_token_as_used(db, token_id=db_token.id)
 
-    user = db.get(models.User, int(user_id))
+    user = await db.get(models.User, int(user_id))
     if not user:
          raise HTTPException(status_code=404, detail="User not found.")
 
@@ -107,9 +106,9 @@ def refresh_access_token(token_data: models.TokenRefreshRequest, db: Session = D
     )
 
     new_jti = auth.create_refresh_token_jti()
-    new_expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    new_expires_at = (datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)).replace(tzinfo=None)
 
-    crud.create_db_refresh_token(
+    await crud.create_db_refresh_token(
         session=db,
         user_id=user.id,
         jti=new_jti,
