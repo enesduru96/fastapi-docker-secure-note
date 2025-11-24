@@ -2,11 +2,13 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
 from .routers import auth, notes 
+from . import database
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
     print("Application is shutting down...")
+    await database.engine.dispose()
 
 app = FastAPI(
     title="SecureNote API",

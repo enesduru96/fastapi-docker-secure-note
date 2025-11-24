@@ -26,10 +26,23 @@ async def read_notes(
 @router.get("/search", response_model=List[models.NotePublicWithUsername])
 async def search_notes(
     q: str,
+    offset: int = 0,
+    limit: int = 20,
     db: AsyncSession = Depends(get_session),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    return await crud.search_notes(session=db, query=q, owner_id=current_user.id)
+    MAX_INTERNAL_LIMIT = 100
+    
+    if limit > MAX_INTERNAL_LIMIT:
+        limit = MAX_INTERNAL_LIMIT
+
+    return await crud.search_notes(
+        session=db, 
+        query=q, 
+        owner_id=current_user.id, 
+        offset=offset, 
+        limit=limit
+    )
 
 @router.get("/public", response_model=List[models.NotePublicWithUsername])
 async def read_public_notes(

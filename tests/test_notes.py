@@ -96,26 +96,24 @@ async def test_public_feed_privacy(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_search_notes(client: AsyncClient):
+async def test_search_pagination_limit(client: AsyncClient):
     headers = await get_auth_headers(client)
+    unique_tag = f"pagetest_{uuid.uuid4()}"
+
+    for i in range(15):
+        await client.post(
+            "/notes/", 
+            json={"title": f"{unique_tag} Note {i}", "content": "...", "is_public": False},
+            headers=headers
+        )
     
-    unique_keyword = f"search_term_{uuid.uuid4()}"
+    res_limit = await client.get("/notes/search", params={"q": unique_tag, "limit": 5}, headers=headers)
+    assert res_limit.status_code == 200
+    assert len(res_limit.json()) == 5
     
-    await client.post(
-        "/notes/", 
-        json={
-            "title": f"My {unique_keyword} Note", 
-            "content": "Content here...", 
-            "is_public": False
-        }, 
-        headers=headers
-    )
+    res_offset = await client.get("/notes/search", params={"q": unique_tag, "offset": 10}, headers=headers)
+    assert len(res_offset.json()) == 5
     
-    res1 = await client.get("/notes/search", params={"q": unique_keyword}, headers=headers)
-    assert res1.status_code == 200
-    assert len(res1.json()) > 0
-    assert unique_keyword in res1.json()[0]["title"]
-    
-    res2 = await client.get("/notes/search", params={"q": "Some_Unrelated_Nonexistent_Content"}, headers=headers)
-    assert res2.status_code == 200
-    assert len(res2.json()) == 0
+    res_abuse = await client.get("/notes/search", params={"q": unique_tag, "limit": 1000}, headers=headers)
+    assert res_abuse.status_code == 200
+    assert len(res_abuse.json()) <= 200

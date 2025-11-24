@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import or_
+from sqlalchemy import or_, func, text
 from .models import User, UserCreate, UserPublic, RefreshToken, Note, NoteCreate, NotePublicWithUsername
 
 async def get_user_by_email(session: AsyncSession, email: str) -> Optional[User]:
@@ -99,23 +99,28 @@ async def get_public_notes(session: AsyncSession, limit: int = 100) -> List[Note
         
     return output_list
 
-async def search_notes(session: AsyncSession, query: str, owner_id: int) -> List[NotePublicWithUsername]:
+async def search_notes(session: AsyncSession, query: str, owner_id: int, offset: int, limit: int) -> list[NotePublicWithUsername]:
+    
+
+    search_vector = func.to_tsvector('english', func.coalesce(Note.title, '') + ' ' + func.coalesce(Note.content, ''))     # to prevent NULL
+    search_query = func.websearch_to_tsquery('english', query)
+    
     statement = (
-        select(Note, User.username)
-        .join(User)
-        .where(
-            or_(
-                Note.owner_id == owner_id,
-                Note.is_public == True
+            select(Note, User.username)
+            .join(User)
+            .where(
+                or_(
+                    Note.owner_id == owner_id,
+                    Note.is_public == True
+                )
             )
-        )
-        .where(
-            or_(
-                Note.title.ilike(f"%{query}%"),
-                Note.content.ilike(f"%{query}%")
+            .where(
+                search_vector.op("@@")(search_query)
             )
+            .order_by(func.ts_rank(search_vector, search_query).desc()) # order by relevance
+            .offset(offset)
+            .limit(limit)
         )
-    )
     
     result = await session.exec(statement)
     results = result.all()
