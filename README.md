@@ -20,6 +20,7 @@ The project implements **JWT Authentication** (Access + Refresh Token Rotation),
     * Email format validation using Pydantic.
 * 🌍 **Social Features (Public Feed):** Users can mark notes as "Public". Other users can view these notes with the author's username attached (via SQL Joins).
 * 🔍 **Search:** Filter notes by title or content using the search endpoint.
+* 🧪 **Automated Testing (CI):** GitHub Actions pipeline running asynchronous **Pytest** suite on every push/pull request.
 * 🏗️ **Database Migrations:** Schema changes are managed professionally using **Alembic**.
 * ⚙️ **Configuration:** Centralized settings management using `pydantic-settings`.
 * 💻 **CLI Client:** Includes a Python-based terminal client with session management for easy testing.
@@ -139,6 +140,6 @@ This project is actively being developed. Here are the planned features for upco
 - [x] Docker & Compose Infrastructure
 - [x] CLI Client
 - [x] Refactored Async Codebase
+- [x] Comprehensive Unit Tests (Pytest)
 - [ ] **Frontend Web UI** (Planned: Streamlit Dashboard)
-- [ ] Comprehensive Unit Tests (Pytest)
 - [ ] Deployment to Cloud (Render)
