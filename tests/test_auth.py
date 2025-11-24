@@ -8,7 +8,7 @@ def random_email():
 @pytest.mark.asyncio
 async def test_register_user(client: AsyncClient):
     email = random_email()
-    response = client.post("/auth/register", json={
+    response = await client.post("/auth/register", json={
         "email": email,
         "password": "strongpassword123",
         "username": f"user_{uuid.uuid4()}"
@@ -27,10 +27,10 @@ async def test_register_duplicate_user(client: AsyncClient):
         "username": f"user_{uuid.uuid4()}"
     }
     
-    res1 = client.post("/auth/register", json=user_data)
+    res1 = await client.post("/auth/register", json=user_data)
     assert res1.status_code == 201
     
-    res2 = client.post("/auth/register", json=user_data)
+    res2 = await client.post("/auth/register", json=user_data)
     assert res2.status_code == 400
     assert res2.json()["detail"] == "Email already registered."
 
@@ -43,11 +43,11 @@ async def test_login_user(client: AsyncClient):
     password = "mypassword"
     username = f"user_{uuid.uuid4()}"
     
-    client.post("/auth/register", json={
+    await client.post("/auth/register", json={
         "email": email, "password": password, "username": username
     })
     
-    response = client.post("/auth/token", data={
+    response = await client.post("/auth/token", data={
         "username": email,
         "password": password
     })

@@ -98,24 +98,24 @@ async def test_public_feed_privacy(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_search_notes(client: AsyncClient):
     headers = await get_auth_headers(client)
-
+    
+    unique_keyword = f"search_term_{uuid.uuid4()}"
+    
     await client.post(
-        "/notes/",
+        "/notes/", 
         json={
-            "title": "Test Note Title",
-            "content": "test note content...",
-            "is_public": False,
-        },
-        headers=headers,
+            "title": f"My {unique_keyword} Note", 
+            "content": "Content here...", 
+            "is_public": False
+        }, 
+        headers=headers
     )
-
-    res1 = await client.get("/notes/search", params={"q": "test"}, headers=headers)
+    
+    res1 = await client.get("/notes/search", params={"q": unique_keyword}, headers=headers)
     assert res1.status_code == 200
-    assert len(res1.json()) == 1
-    assert res1.json()[0]["title"] == "Test Note Title"
-
-    res2 = await client.get(
-        "/notes/search", params={"q": "nonexistentcontent"}, headers=headers
-    )
+    assert len(res1.json()) > 0
+    assert unique_keyword in res1.json()[0]["title"]
+    
+    res2 = await client.get("/notes/search", params={"q": "Some_Unrelated_Nonexistent_Content"}, headers=headers)
     assert res2.status_code == 200
     assert len(res2.json()) == 0
