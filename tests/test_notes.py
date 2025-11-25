@@ -1,7 +1,13 @@
 import pytest
-from httpx import AsyncClient
 import uuid
+from httpx import AsyncClient
 from app import redis_client
+from app.crypto import decrypt_text
+
+from app.models import Note
+from sqlmodel import select
+
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 async def get_auth_headers(client: AsyncClient, username: str = None):
     if not username:
@@ -103,7 +109,7 @@ async def test_search_pagination_limit(client: AsyncClient):
     for i in range(15):
         await client.post(
             "/notes/", 
-            json={"title": f"{unique_tag} Note {i}", "content": "...", "is_public": False},
+            json={"title": f"{unique_tag} Note {i}", "content": "...", "is_public": True},
             headers=headers
         )
     
@@ -148,3 +154,33 @@ async def test_public_feed_caching(client: AsyncClient):
 
     is_cached_after = await redis.exists(CACHE_KEY)
     assert is_cached_after == 0, "Cache was not deleted properly"
+    
+    
+@pytest.mark.asyncio
+async def test_encryption_at_rest(client: AsyncClient, session: AsyncSession):
+    headers = await get_auth_headers(client)
+    
+    original_title = "Top Secret Title"
+    original_content = "Bank password 123456"
+    
+    create_res = await client.post(
+        "/notes/",
+        json={"title": original_title, "content": original_content, "is_public": False},
+        headers=headers
+    )
+    assert create_res.status_code == 201
+    note_id = create_res.json()["id"]
+    
+    session.expire_all()
+
+    statement = select(Note).where(Note.id == note_id)
+    result = await session.exec(statement)
+    db_note = result.first()
+
+    assert db_note.title != original_title
+    assert db_note.content != original_content
+    
+    assert decrypt_text(db_note.title) == original_title
+    assert decrypt_text(db_note.content) == original_content
+
+    print(f"\n🔒 Encrypted DB Data: {db_note.content[:15]}...")

@@ -2,7 +2,7 @@
 
 High-performance REST API for secure note-taking and social sharing, built with **FastAPI**, **PostgreSQL**, **Redis**, and **Docker**.
 
-The project implements **JWT Authentication** (Access + Refresh Token Rotation), **Argon2** password hashing, **Async Architecture**, and **Redis Caching** for scalability.
+The project implements **JWT Authentication** (Access + Refresh Token Rotation), **Argon2** password hashing, **Encryption at Rest**, **Async Architecture**, and **Redis Caching** for scalability.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)
@@ -10,22 +10,33 @@ The project implements **JWT Authentication** (Access + Refresh Token Rotation),
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg)
 ![Redis](https://img.shields.io/badge/Redis-Caching-DC382D.svg)
 ![Alembic](https://img.shields.io/badge/Alembic-Migrations-red.svg)
+![Encryption](https://img.shields.io/badge/Encryption-Fernet%2FAES-success)
 
 ## ✨ Key Features
 
 * 🐳 **Fully Dockerized:** Seamless setup with `docker-compose`.
 * 🚀 **High Performance:** Asynchronous codebase (Asyncpg + Asyncio) with **Redis Caching** for public feed and user notes.
-* 🔐 **Implemented Security:**
-    * JWT Access Tokens (Short-lived).
-    * **Refresh Token Rotation** (Old tokens are invalidated upon use to prevent replay attacks).
-    * Password hashing with **Argon2**.
-    * Email format validation using Pydantic.
+* 🔐 **Advanced Security:**
+    * **Encryption at Rest:** Private notes are encrypted in the database (AES/Fernet). Even if the DB is compromised, content remains secure.
+    * **JWT Access Tokens:** Short-lived stateless tokens.
+    * **Refresh Token Rotation:** Old tokens are invalidated upon use to prevent replay attacks.
+    * **Argon2:** State-of-the-art password hashing.
 * 🌍 **Social Features (Public Feed):** Users can mark notes as "Public". Other users can view these notes with the author's username attached (via SQL Joins).
-* 🔍 **Search:** Filter notes by title or content using the search endpoint (with Pagination support).
-* 🧪 **Automated Testing (CI):** GitHub Actions pipeline running asynchronous **Pytest** suite on every push/pull request.
-* 🏗️ **Database Migrations:** Schema changes are managed professionally using **Alembic**.
-* ⚙️ **Configuration:** Centralized settings management using `pydantic-settings`.
-* 💻 **CLI Client:** Includes a Python-based terminal client with session management for easy testing.
+* 🔍 **Smart Search:** Full-Text Search functionality (filters public notes, protects private ones).
+* 🧪 **Automated Testing (CI):** GitHub Actions pipeline running asynchronous **Pytest** suite.
+* ⚙️ **Auto-Configuration:** Includes a script to auto-generate secure environment variables.
+
+---
+
+## 🛡️ Security Architecture
+
+This project uses a **Hybrid Encryption Strategy** to balance security and performance:
+
+**Public Notes** - stored as-is to allow Full-Text Search and high-performance indexing.
+
+**Private Notes** -  Both Title and Content are encrypted with Fernet before saving. Only the owner can decrypt and read them.
+
+**Passwords** - Hashed (Argon2)
 
 ---
 
@@ -52,14 +63,26 @@ cd fastapi-docker-secure-note
 ```
 
 ### 2. Create Environment Variables (.env)
-For security reasons, the .env file is not included in the repository. Create a file named .env in the root directory and add the following content:
+For security reasons, secrets are not stored in the repository. You need to create a .env file. You have two options:
+
+#### Option A: Automatic Setup (Recommended) ⚡ 
+Run the included Python script to generate a secure .env file with cryptographically strong keys:
+```bash
+python generate_env.py
+```
+
+#### Option B: Manual Setup 🛠️ 
+Create a file named .env in the root directory and paste the content below. (Note: You must generate your own secure values for SECRET_KEY and ENCRYPTION_KEY).
 ```
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=password
 POSTGRES_DB=securenote_db
-SECRET_KEY=change_this_to_a_very_long_random_secret_string
 REDIS_HOST=redis
 REDIS_PORT=6379
+
+# Replace these with strong, random keys!
+SECRET_KEY=change_this_to_a_very_long_random_secret_string
+ENCRYPTION_KEY=change_this_to_a_valid_fernet_key
 ```
 
 ### 3. Start Containers
@@ -143,6 +166,7 @@ This project is actively being developed. Here are the planned features for upco
 
 - [x] Core Backend API (FastAPI, SQLModel, PostgreSQL)
 - [x] Advanced Security (JWT, Argon2, Rotation)
+- [x] Encryption at Rest (AES/Fernet)
 - [x] Docker & Compose Infrastructure
 - [x] CLI Client
 - [x] Refactored Async Codebase

@@ -5,6 +5,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import or_, func, text
 from .models import User, UserCreate, UserPublic, RefreshToken, Note, NoteCreate, NotePublicWithUsername
 
+from .crypto import encrypt_text, decrypt_text
+
 async def get_user_by_email(session: AsyncSession, email: str) -> Optional[User]:
     statement = select(User).where(User.email == email)
     result = await session.exec(statement)
@@ -64,21 +66,41 @@ async def mark_refresh_token_as_used(session: AsyncSession, token_id: int):
         
 
 async def create_note(session: AsyncSession, note_in: NoteCreate, owner_id: int) -> Note:
+    title_to_save = note_in.title
+    content_to_save = note_in.content
+    
+    if not note_in.is_public:
+        title_to_save = encrypt_text(note_in.title)
+        content_to_save = encrypt_text(note_in.content)
+
     db_note = Note(
-        title=note_in.title,
-        content=note_in.content,
+        title=title_to_save,
+        content=content_to_save,
         is_public=note_in.is_public,
         owner_id=owner_id
     )
     session.add(db_note)
     await session.commit()
     await session.refresh(db_note)
+    
+    db_note.title = note_in.title
+    db_note.content = note_in.content 
     return db_note
 
-async def get_notes_by_owner(session: AsyncSession, owner_id: int) -> List[Note]:
+
+async def get_notes_by_owner(session: AsyncSession, owner_id: int) -> list[Note]:
     statement = select(Note).where(Note.owner_id == owner_id)
     result = await session.exec(statement)
-    return result.all()
+    notes = result.all()
+    
+    decrypted_notes = []
+    for note in notes:
+        if not note.is_public:
+            note.title = decrypt_text(note.title)
+            note.content = decrypt_text(note.content)
+        decrypted_notes.append(note)
+        
+    return decrypted_notes
 
 async def get_public_notes(session: AsyncSession, limit: int = 100) -> List[NotePublicWithUsername]:
     statement = (
@@ -100,27 +122,18 @@ async def get_public_notes(session: AsyncSession, limit: int = 100) -> List[Note
     return output_list
 
 async def search_notes(session: AsyncSession, query: str, owner_id: int, offset: int, limit: int) -> list[NotePublicWithUsername]:
-    
-
-    search_vector = func.to_tsvector('english', func.coalesce(Note.title, '') + ' ' + func.coalesce(Note.content, ''))     # to prevent NULL
+    search_vector = func.to_tsvector('english', func.coalesce(Note.title, '') + ' ' + func.coalesce(Note.content, ''))
     search_query = func.websearch_to_tsquery('english', query)
     
     statement = (
-            select(Note, User.username)
-            .join(User)
-            .where(
-                or_(
-                    Note.owner_id == owner_id,
-                    Note.is_public == True
-                )
-            )
-            .where(
-                search_vector.op("@@")(search_query)
-            )
-            .order_by(func.ts_rank(search_vector, search_query).desc()) # order by relevance
-            .offset(offset)
-            .limit(limit)
-        )
+        select(Note, User.username)
+        .join(User)
+        .where(Note.is_public == True)
+        .where(search_vector.op("@@")(search_query))
+        .order_by(func.ts_rank(search_vector, search_query).desc())
+        .offset(offset)
+        .limit(limit)
+    )
     
     result = await session.exec(statement)
     results = result.all()
