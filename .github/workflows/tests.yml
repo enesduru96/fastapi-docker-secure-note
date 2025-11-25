@@ -20,6 +20,12 @@ jobs:
         echo "POSTGRES_PASSWORD=password" >> .env
         echo "POSTGRES_DB=securenote_db" >> .env
         echo "SECRET_KEY=testing_secret_key_123456789" >> .env
+        
+        # Random Fernet secret key for tests
+        echo "ENCRYPTION_KEY=v_p93ve5y-J5X8Q7Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Y=" >> .env
+        
+        echo "REDIS_HOST=redis" >> .env
+        echo "REDIS_PORT=6379" >> .env
 
     - name: Start containers
       run: docker compose up -d --build
