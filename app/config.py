@@ -6,6 +6,9 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
     SECRET_KEY: str
     
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: int = 6379
+    
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7

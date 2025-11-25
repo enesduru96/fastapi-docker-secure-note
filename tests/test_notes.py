@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 import uuid
-
+from app import redis_client
 
 async def get_auth_headers(client: AsyncClient, username: str = None):
     if not username:
@@ -117,3 +117,34 @@ async def test_search_pagination_limit(client: AsyncClient):
     res_abuse = await client.get("/notes/search", params={"q": unique_tag, "limit": 1000}, headers=headers)
     assert res_abuse.status_code == 200
     assert len(res_abuse.json()) <= 200
+
+
+
+@pytest.mark.asyncio
+async def test_public_feed_caching(client: AsyncClient):
+    headers = await get_auth_headers(client)
+    redis = redis_client.get_redis_pool()
+    CACHE_KEY = "public_notes_feed"
+
+    await redis.delete(CACHE_KEY)
+
+    await client.post(
+        "/notes/", 
+        json={"title": "Cache Test Note", "content": "...", "is_public": True}, 
+        headers=headers
+    )
+    
+    res1 = await client.get("/notes/public", headers=headers)
+    assert res1.status_code == 200
+    
+    is_cached = await redis.exists(CACHE_KEY)
+    assert is_cached == 1, "Public feed was not cached"
+
+    await client.post(
+        "/notes/", 
+        json={"title": "New Note", "content": "...", "is_public": True}, 
+        headers=headers
+    )
+
+    is_cached_after = await redis.exists(CACHE_KEY)
+    assert is_cached_after == 0, "Cache was not deleted properly"

@@ -1,25 +1,27 @@
 # 🔐 SecureNote API
 
-REST API for secure note-taking and social sharing, built with **FastAPI**, **PostgreSQL**, and **Docker**.
+High-performance REST API for secure note-taking and social sharing, built with **FastAPI**, **PostgreSQL**, **Redis**, and **Docker**.
 
-The project implements **JWT Authentication** (Access + Refresh Token Rotation), **Argon2** password hashing, and **Alembic** for database version control.
+The project implements **JWT Authentication** (Access + Refresh Token Rotation), **Argon2** password hashing, **Async Architecture**, and **Redis Caching** for scalability.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg)
+![Redis](https://img.shields.io/badge/Redis-Caching-DC382D.svg)
 ![Alembic](https://img.shields.io/badge/Alembic-Migrations-red.svg)
 
 ## ✨ Key Features
 
 * 🐳 **Fully Dockerized:** Seamless setup with `docker-compose`.
+* 🚀 **High Performance:** Asynchronous codebase (Asyncpg + Asyncio) with **Redis Caching** for public feed and user notes.
 * 🔐 **Implemented Security:**
     * JWT Access Tokens (Short-lived).
     * **Refresh Token Rotation** (Old tokens are invalidated upon use to prevent replay attacks).
     * Password hashing with **Argon2**.
     * Email format validation using Pydantic.
 * 🌍 **Social Features (Public Feed):** Users can mark notes as "Public". Other users can view these notes with the author's username attached (via SQL Joins).
-* 🔍 **Search:** Filter notes by title or content using the search endpoint.
+* 🔍 **Search:** Filter notes by title or content using the search endpoint (with Pagination support).
 * 🧪 **Automated Testing (CI):** GitHub Actions pipeline running asynchronous **Pytest** suite on every push/pull request.
 * 🏗️ **Database Migrations:** Schema changes are managed professionally using **Alembic**.
 * ⚙️ **Configuration:** Centralized settings management using `pydantic-settings`.
@@ -29,8 +31,9 @@ The project implements **JWT Authentication** (Access + Refresh Token Rotation),
 
 ## 🛠 Tech Stack
 
-* **Framework:** FastAPI
-* **Database:** PostgreSQL 15
+* **Framework:** FastAPI (Async)
+* **Database:** PostgreSQL 15 (Asyncpg driver)
+* **Caching:** Redis (Async)
 * **ORM:** SQLModel (SQLAlchemy + Pydantic)
 * **Migrations:** Alembic
 * **Authentication:** Python-JOSE & Passlib (Argon2)
@@ -55,6 +58,8 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=password
 POSTGRES_DB=securenote_db
 SECRET_KEY=change_this_to_a_very_long_random_secret_string
+REDIS_HOST=redis
+REDIS_PORT=6379
 ```
 
 ### 3. Start Containers
@@ -123,9 +128,10 @@ If you want to wipe everything (including data) and start fresh:
 │   ├── models.py        # Database Models (User, Note, Token)  
 │   ├── crud.py          # Database Operations (Create, Read...)  
 │   ├── auth.py          # JWT, Hashing, and Security Logic  
+│   ├── redis_client.py  # Redis Connection Manager
 │   ├── config.py        # Settings Management (.env reading)  
 │   └── main.py          # Application Entry Point  
-├── client_app.py        # Terminal Testing Client  
+├── client_test_app.py   # Terminal Testing Client  
 ├── docker-compose.yml   # Docker Services Configuration  
 └── Dockerfile           # Python Environment Definition  
 
@@ -140,6 +146,7 @@ This project is actively being developed. Here are the planned features for upco
 - [x] Docker & Compose Infrastructure
 - [x] CLI Client
 - [x] Refactored Async Codebase
+- [x] Redis Caching Implementation
 - [x] Comprehensive Unit Tests (Pytest)
 - [ ] **Frontend Web UI** (Planned: Streamlit Dashboard)
 - [ ] Deployment to Cloud (Render)

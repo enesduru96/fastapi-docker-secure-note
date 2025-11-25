@@ -8,6 +8,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
+from app import redis_client
+
 engine_test = create_async_engine(
     settings.DATABASE_URL, 
     echo=False,
@@ -43,3 +45,10 @@ async def client(session):
         yield c
     
     app.dependency_overrides.clear()
+    
+@pytest.fixture(autouse=True)
+async def clear_redis():
+    redis = redis_client.get_redis_pool()
+    await redis.flushdb()
+    yield
+    await redis_client.close_redis_pool()

@@ -3,13 +3,16 @@ from contextlib import asynccontextmanager
 
 from .routers import auth, notes 
 from . import database
+from . import redis_client
 
 from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    redis_client.get_redis_pool()
     yield
     print("Application is shutting down...")
+    await redis_client.close_redis_pool()
     await database.engine.dispose()
 
 app = FastAPI(
